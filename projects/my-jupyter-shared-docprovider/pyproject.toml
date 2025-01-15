@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 requires = ["hatchling>=1.4.0", "jupyterlab>=4.0.0"]
 
 [project]
-name = "my-jupyter-shared-docprovider"
+name = "my-jupyter-shared-drive"
 version = "0.1.0"
 readme = "README.md"
 license = { file = "LICENSE" }

@@ -19,10 +19,7 @@ jobs:
 
       - run: |
           pip install hatch
-          cd projects/jupyter-server-signaling; hatch build ../../dist; cd ../..
-          cd projects/jupyter-shared-docprovider; hatch build ../../dist; cd ../..
-          cd projects/jupyter-shared-drive; hatch build ../../dist; cd ../..
-          cd projects/jupyter-shared-drive-ui; hatch build ../../dist; cd ../..
+          cd projects/my-jupyter-shared-docprovider; hatch build ../../dist; cd ../..
       - uses: actions/upload-artifact@v4
         with:
           path: ./dist
