@@ -7,7 +7,7 @@ requires = ["hatchling>=1.4.0", "jupyterlab>=4.0.0"]
 
 [project]
 name = "my-jupyter-shared-drive"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
@@ -38,7 +38,7 @@ Documentation = "https://jupyterlab-realtime-collaboration.readthedocs.io/"
 Repository = "https://github.com/jupyterlab/jupyter-collaboration"
 
 [tool.hatch.build.targets.sdist]
-artifacts = ["my_jupyter_shared_docprovider/labextension"]
+artifacts = ["my_jupyter_shared_drive/labextension"]
 exclude = ["/.github", "/binder", "node_modules"]
 
 [tool.hatch.build.targets.sdist.force-include]
@@ -46,7 +46,7 @@ exclude = ["/.github", "/binder", "node_modules"]
 "packages/my-shared-docprovider-extension" = "packages/my-shared-docprovider-extension"
 
 [tool.hatch.build.targets.wheel.shared-data]
-"my_jupyter_shared_docprovider/labextension" = "share/jupyter/labextensions/@jupyter/my-shared-docprovider-extension"
+"my_jupyter_shared_drive/labextension" = "share/jupyter/labextensions/@jupyter/my-shared-docprovider-extension"
 "install.json" = "share/jupyter/labextensions/@jupyter/my-shared-docprovider-extension/install.json"
 
 [tool.hatch.build.hooks.jupyter-builder]
