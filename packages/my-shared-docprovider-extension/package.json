@@ -45,7 +45,7 @@
     "build:labextension:dev": "jupyter labextension build --development True .",
     "clean": "jlpm run clean:lib",
     "clean:lib": "rimraf lib tsconfig.tsbuildinfo node_modules",
-    "clean:labextension": "rimraf ../../projects/my-jupyter-shared-docprovider/my_jupyter_shared_docprovider/labextension",
+    "clean:labextension": "rimraf ../../my_jupyter_shared_drive/labextension",
     "clean:all": "jlpm run clean:lib && jlpm run clean:labextension",
     "install:extension": "jlpm run build",
     "watch": "run-p watch:src watch:labextension",
@@ -73,7 +73,7 @@
   },
   "jupyterlab": {
     "extension": true,
-    "outputDir": "../../projects/my-jupyter-shared-docprovider/my_jupyter_shared_docprovider/labextension",
+    "outputDir": "../../my_jupyter_shared_drive/labextension",
     "disabledExtensions": [
       "@jupyterlab/filebrowser-extension:defaultFileBrowser",
       "@jupyter/docprovider-extension:defaultFileBrowser"
