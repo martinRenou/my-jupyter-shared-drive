@@ -53,6 +53,7 @@
     "watch:labextension": "jupyter labextension watch ."
   },
   "dependencies": {
+    "@jupyter/collaborative-drive": "^3.1.0",
     "@jupyter/my-shared-docprovider": "^0.1.0",
     "@jupyterlab/filebrowser": "^4.2.0"
   },
@@ -85,6 +86,10 @@
       },
       "@codemirror/view": {
         "bundled": false,
+        "singleton": true
+      },
+      "@jupyter/collaborative-drive": {
+        "bundled": true,
         "singleton": true
       },
       "@jupyter/my-shared-drive": {

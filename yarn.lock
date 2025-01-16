@@ -1754,7 +1754,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jupyter/collaborative-drive@npm:^3.0.0":
+"@jupyter/collaborative-drive@npm:^3.0.0, @jupyter/collaborative-drive@npm:^3.1.0":
   version: 3.1.0
   resolution: "@jupyter/collaborative-drive@npm:3.1.0"
   dependencies:
@@ -1793,6 +1793,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@jupyter/my-shared-docprovider-extension@workspace:packages/my-shared-docprovider-extension"
   dependencies:
+    "@jupyter/collaborative-drive": ^3.1.0
     "@jupyter/my-shared-docprovider": ^0.1.0
     "@jupyterlab/builder": ^4.0.5
     "@jupyterlab/filebrowser": ^4.2.0
