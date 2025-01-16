@@ -158,7 +158,9 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         translator: this._trans
       });
 
-      super.get(options.path, { content: true }).then(model => { sharedModel.source = model.content; });
+      super.get(options.path, { content: true }).then(model => {
+        provider.setSource(model.content);
+      });
 
       const key = `${options.format}:${options.contentType}:${options.path}`;
       this._providers.set(key, provider);

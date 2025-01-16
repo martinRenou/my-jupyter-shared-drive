@@ -29,6 +29,7 @@ export class MyProvider implements IDocumentProvider {
     this._contentType = options.contentType;
     this._format = options.format;
     this._awareness = options.model.awareness;
+    this._model = options.model;
 
     const user = options.user;
 
@@ -38,7 +39,10 @@ export class MyProvider implements IDocumentProvider {
       })
       .catch(e => console.error(e));
     user.userChanged.connect(this._onUserChanged, this);
+  }
 
+  setSource(value: any): void {
+    this._model.setSource(value);
     this._ready.resolve();
   }
 
@@ -82,6 +86,7 @@ export class MyProvider implements IDocumentProvider {
   private _format: string;
   private _isDisposed: boolean;
   private _ready = new PromiseDelegate<void>();
+  private _model: YDocument<DocumentChange>;
 }
 
 /**
