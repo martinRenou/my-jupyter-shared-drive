@@ -33,6 +33,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     translator: TranslationBundle,
   ) {
     super({ name: 'RTC' });
+    this._app = app;
     this._user = app.serviceManager.user;
     this._trans = translator;
     this._providers = new Map<string, MyProvider>();
@@ -89,7 +90,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         // Use `Promise.all` to reject as soon as possible. The Context will
         // show a dialog to the user.
         const [model] = await Promise.all([
-          super.get(localPath, { ...options, content: false }),
+          await this._app.serviceManager.contents.get(localPath, { ...options, content: false }),
           provider.ready
         ]);
         // The server doesn't return a model with a format when content is false,
@@ -98,7 +99,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
       }
     }
 
-    return super.get(localPath, options);
+    return await this._app.serviceManager.contents.get(localPath, options);
   }
 
   /**
@@ -213,6 +214,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     }
   };
 
+  private _app: JupyterFrontEnd;
   private _user: User.IManager;
   private _trans: TranslationBundle;
   private _providers: Map<string, MyProvider>;
