@@ -132,7 +132,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
       }
     }
 
-    return super.save(localPath, options);
+    return this._app.serviceManager.contents.save(localPath, options);
   }
 
   /**
@@ -159,7 +159,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         translator: this._trans
       });
 
-      super.get(options.path, { content: true }).then(model => {
+      this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
         provider.setSource(model.content);
       });
 
