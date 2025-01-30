@@ -93,7 +93,6 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
           await this._app.serviceManager.contents.get(localPath, { ...options, content: false }),
           provider.ready
         ]);
-        console.log('get model format:', options.format);
         // The server doesn't return a model with a format when content is false,
         // so set it back.
         return { ...model, format: options.format };
@@ -160,7 +159,8 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         translator: this._trans
       });
 
-      this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
+      this._app.serviceManager.contents.get(options.path, { content: true, format: 'text' }).then(model => {
+        console.log('set model source to:', model.content);
         provider.setSource(model.content);
       });
 
