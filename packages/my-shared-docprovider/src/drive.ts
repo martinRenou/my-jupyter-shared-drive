@@ -103,7 +103,11 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
   }
 
   async listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
-    return [];
+    return [{id: "checkpoint", last_modified: "2025-01-30T16:33:19.393756Z"}];
+  }
+
+  async createCheckpoint(path: string): Promise<Contents.ICheckpointModel> {
+    return {id: "checkpoint", last_modified: "2025-01-30T16:33:19.393756Z"};
   }
 
   /**
