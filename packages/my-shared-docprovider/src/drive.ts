@@ -159,9 +159,10 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         translator: this._trans
       });
 
-      this._app.serviceManager.contents.get(options.path, { content: true, format: 'text' }).then(model => {
-        console.log('set model source to:', model.content);
-        provider.setSource(model.content);
+      this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
+        console.log('set model source:', model);
+        const content = model.format === 'base64' ? atob(model.content) : model.content;
+        provider.setSource(content);
       });
 
       const key = `${options.format}:${options.contentType}:${options.path}`;
