@@ -154,6 +154,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     options: Contents.ISharedFactoryOptions,
     sharedModel: YDocument<DocumentChange>
   ) => {
+    console.log('_onCreate', options);
     if (typeof options.format !== 'string') {
       return;
     }
@@ -166,6 +167,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         user: this._user,
         translator: this._trans
       });
+      console.log('provider', provider);
 
       this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
         console.log('set model source:', model);
@@ -280,6 +282,7 @@ class SharedModelFactory implements ISharedModelFactory {
   createNew(
     options: Contents.ISharedFactoryOptions
   ): ISharedDocument | undefined {
+    console.log("createNew", options);
     if (typeof options.format !== 'string') {
       console.warn(`Only defined format are supported; got ${options.format}.`);
       return;
@@ -296,6 +299,7 @@ class SharedModelFactory implements ISharedModelFactory {
       this._onCreate(options, sharedModel);
       return sharedModel;
     }
+    console.log("no document factory");
 
     return;
   }
