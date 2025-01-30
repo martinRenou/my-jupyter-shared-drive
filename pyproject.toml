@@ -10,7 +10,7 @@ name = "my-jupyter-shared-drive"
 version = "0.1.5"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 description = "JupyterLab/Jupyter Notebook 7+ extension integrating collaborative shared models."
 classifiers = [
     "Intended Audience :: Developers",

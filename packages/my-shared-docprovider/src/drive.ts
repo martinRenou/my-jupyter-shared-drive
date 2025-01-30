@@ -93,6 +93,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
           await this._app.serviceManager.contents.get(localPath, { ...options, content: false }),
           provider.ready
         ]);
+        console.log('get model format:', options.format);
         // The server doesn't return a model with a format when content is false,
         // so set it back.
         return { ...model, format: options.format };

@@ -44,6 +44,7 @@ export class MyProvider implements IDocumentProvider {
   setSource(value: any): void {
     this._model.setSource(value);
     this._ready.resolve();
+    console.log('set model source to:', value);
   }
 
   /**
