@@ -102,6 +102,10 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     return await this._app.serviceManager.contents.get(localPath, options);
   }
 
+  async listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
+    return [];
+  }
+
   /**
    * Save a file.
    *
