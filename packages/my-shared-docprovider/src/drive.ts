@@ -42,6 +42,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
       // pass through any events from the Drive superclass
       this._ydriveFileChanged.emit(change);
     });
+    this._saveLock = new AsyncLock();
   }
 
   /**
@@ -103,11 +104,11 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
   }
 
   async listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
-    return [{id: "checkpoint", last_modified: "2025-01-30T16:33:19.393756Z"}];
+    return [];
   }
 
   async createCheckpoint(path: string): Promise<Contents.ICheckpointModel> {
-    return {id: "checkpoint", last_modified: "2025-01-30T16:33:19.393756Z"};
+    return {id: '', last_modified: ''};
   }
 
   /**
@@ -154,7 +155,6 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     options: Contents.ISharedFactoryOptions,
     sharedModel: YDocument<DocumentChange>
   ) => {
-    console.log('_onCreate', options);
     if (typeof options.format !== 'string') {
       return;
     }
@@ -167,16 +167,34 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         user: this._user,
         translator: this._trans
       });
-      console.log('provider', provider);
 
       this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
-        console.log('set model source:', model);
         const content = model.format === 'base64' ? atob(model.content) : model.content;
         provider.setSource(content);
       });
 
       const key = `${options.format}:${options.contentType}:${options.path}`;
       this._providers.set(key, provider);
+
+      sharedModel.ydoc.on('update' , (update, origin) => {
+        if (origin === this) {
+          return;
+        }
+        this._saveLock.promise.then(() => {
+          this._saveLock.enable();
+          let content = sharedModel.getSource();
+          sharedModel.ydoc.transact( () => {
+            sharedModel.ystate.set('dirty', false);
+          }, this);
+          if (options.format === 'text' && typeof content === 'object') {
+            content = JSON.stringify(content);
+          }
+          this._app.serviceManager.contents.save(options.path, {content, format: options.format, type: options.contentType})
+          .then(() => {
+            this._saveLock.disable();
+          });
+        });
+      });
 
       sharedModel.changed.connect(async (_, change) => {
         if (!change.stateChange) {
@@ -231,6 +249,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
   private _trans: TranslationBundle;
   private _providers: Map<string, MyProvider>;
   private _ydriveFileChanged = new Signal<this, Contents.IChangedArgs>(this);
+  private _saveLock: AsyncLock;
 }
 
 /**
@@ -282,7 +301,6 @@ class SharedModelFactory implements ISharedModelFactory {
   createNew(
     options: Contents.ISharedFactoryOptions
   ): ISharedDocument | undefined {
-    console.log("createNew", options);
     if (typeof options.format !== 'string') {
       console.warn(`Only defined format are supported; got ${options.format}.`);
       return;
@@ -299,8 +317,22 @@ class SharedModelFactory implements ISharedModelFactory {
       this._onCreate(options, sharedModel);
       return sharedModel;
     }
-    console.log("no document factory");
 
     return;
   }
+}
+
+
+class AsyncLock {
+  constructor () {
+    this.disable = () => {};
+    this.promise = Promise.resolve();
+  }
+
+  enable () {
+    this.promise = new Promise(resolve => this.disable = resolve);
+  }
+
+  disable: any;
+  promise: Promise<void>;
 }
