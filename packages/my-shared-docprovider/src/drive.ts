@@ -153,95 +153,78 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
 
   private _onCreate = (
     options: Contents.ISharedFactoryOptions,
-    sharedModel: YDocument<DocumentChange>
-  ) => {
+  ): YDocument<DocumentChange> => {
     if (typeof options.format !== 'string') {
-      return;
+      const factory = (
+        this.sharedModelFactory as SharedModelFactory
+      ).documentFactories.get(options.contentType)!;
+      const sharedModel = factory(options);
+      return sharedModel;
     }
-    try {
-      const provider = new MyProvider({
-        path: options.path,
-        format: options.format,
-        contentType: options.contentType,
-        model: sharedModel,
-        user: this._user,
-        translator: this._trans
-      });
 
-      this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
-        const content = model.format === 'base64' ? atob(model.content) : model.content;
-        provider.setSource(content);
-      });
+    const key = `${options.format}:${options.contentType}:${options.path}`;
 
-      const key = `${options.format}:${options.contentType}:${options.path}`;
-      this._providers.set(key, provider);
+    // Check if shared model alread exists.
+    const _provider = this._providers.get(key);
+    if (_provider) {
+      return _provider.model;
+    }
 
-      sharedModel.ydoc.on('update' , (update, origin) => {
-        if (origin === this) {
-          return;
+    const factory = (
+      this.sharedModelFactory as SharedModelFactory
+    ).documentFactories.get(options.contentType)!;
+    const sharedModel = factory(options);
+    sharedModel.changed.connect((_: any, event: any) => {
+      if (!event.stateChange) {
+        sharedModel.ystate.set('dirty', false);
+      }
+    });
+
+    const provider = new MyProvider({
+      path: options.path,
+      format: options.format,
+      contentType: options.contentType,
+      model: sharedModel,
+      user: this._user,
+      translator: this._trans
+    });
+
+    this._providers.set(key, provider);
+
+    this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
+      const content = model.format === 'base64' ? atob(model.content) : model.content;
+      provider.setSource(content);
+    });
+
+    sharedModel.ydoc.on('update' , (update, origin) => {
+      if (origin === this) {
+        return;
+      }
+      this._saveLock.promise.then(() => {
+        this._saveLock.enable();
+        let content = sharedModel.getSource();
+        sharedModel.ydoc.transact( () => {
+          sharedModel.ystate.set('dirty', false);
+        }, this);
+        if (options.format === 'text' && typeof content === 'object') {
+          content = JSON.stringify(content);
         }
-        this._saveLock.promise.then(() => {
-          this._saveLock.enable();
-          let content = sharedModel.getSource();
-          sharedModel.ydoc.transact( () => {
-            sharedModel.ystate.set('dirty', false);
-          }, this);
-          if (options.format === 'text' && typeof content === 'object') {
-            content = JSON.stringify(content);
-          }
-          this._app.serviceManager.contents.save(options.path, {content, format: options.format, type: options.contentType})
-          .then(() => {
-            this._saveLock.disable();
-          });
+        this._app.serviceManager.contents.save(options.path, {content, format: options.format, type: options.contentType})
+        .then(() => {
+          this._saveLock.disable();
         });
       });
+    });
 
-      sharedModel.changed.connect(async (_, change) => {
-        if (!change.stateChange) {
-          return;
-        }
-        const hashChanges = change.stateChange.filter(
-          change => change.name === 'hash'
-        );
-        if (hashChanges.length === 0) {
-          return;
-        }
-        if (hashChanges.length > 1) {
-          console.error(
-            'Unexpected multiple changes to hash value in a single transaction'
-          );
-        }
-        const hashChange = hashChanges[0];
+    sharedModel.disposed.connect(() => {
+      const provider = this._providers.get(key);
+      if (provider) {
+        provider.dispose();
+        this._providers.delete(key);
+      }
+    });
 
-        // A change in hash signifies that a save occurred on the server-side
-        // (e.g. a collaborator performed the save) - we want to notify the
-        // observers about this change so that they can store the new hash value.
-        const newPath = sharedModel.state.path ?? options.path;
-        const model = await this.get(newPath as string, { content: false });
-
-        this._ydriveFileChanged.emit({
-          type: 'save',
-          newValue: { ...model, hash: hashChange.newValue },
-          // we do not have the old model because it was discarded when server made the change,
-          // we only have the old hash here (which may be empty if the file was newly created!)
-          oldValue: { hash: hashChange.oldValue }
-        });
-      });
-
-      sharedModel.disposed.connect(() => {
-        const provider = this._providers.get(key);
-        if (provider) {
-          provider.dispose();
-          this._providers.delete(key);
-        }
-      });
-    } catch (error) {
-      // Falling back to the contents API if opening the websocket failed
-      // This may happen if the shared document is not a YDocument.
-      console.error(
-        `Failed to open connection for ${options.path}.\n:${error}`
-      );
-    }
+    return sharedModel;
   };
 
   private _app: JupyterFrontEnd;
@@ -266,8 +249,7 @@ class SharedModelFactory implements ISharedModelFactory {
   constructor(
     private _onCreate: (
       options: Contents.ISharedFactoryOptions,
-      sharedModel: YDocument<DocumentChange>
-    ) => void
+    ) => YDocument<DocumentChange>
   ) {
     this.documentFactories = new Map();
   }
@@ -311,10 +293,9 @@ class SharedModelFactory implements ISharedModelFactory {
       // the `sharedModel` will be the default one.
       return;
     }
+
     if (this.documentFactories.has(options.contentType)) {
-      const factory = this.documentFactories.get(options.contentType)!;
-      const sharedModel = factory(options);
-      this._onCreate(options, sharedModel);
+      const sharedModel = this._onCreate(options);
       return sharedModel;
     }
 
