@@ -111,6 +111,10 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     return {id: '', last_modified: ''};
   }
 
+  async newUntitled(options?: Contents.ICreateOptions): Promise<Contents.IModel> {
+    return await this._app.serviceManager.contents.newUntitled(options);
+  }
+
   /**
    * Save a file.
    *
