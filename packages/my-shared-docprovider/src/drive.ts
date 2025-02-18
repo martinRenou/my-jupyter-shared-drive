@@ -111,6 +111,17 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
     return {id: '', last_modified: ''};
   }
 
+  async rename(
+    oldLocalPath: string,
+    newLocalPath: string
+  ): Promise<Contents.IModel> {
+    return await this._app.serviceManager.contents.rename(oldLocalPath, newLocalPath);
+  }
+
+  async delete(localPath: string): Promise<void> {
+    return await this._app.serviceManager.contents.delete(localPath);
+  }
+
   async newUntitled(options?: Contents.ICreateOptions): Promise<Contents.IModel> {
     return await this._app.serviceManager.contents.newUntitled(options);
   }
