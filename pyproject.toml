@@ -7,7 +7,7 @@ requires = ["hatchling>=1.4.0", "jupyterlab>=4.0.0"]
 
 [project]
 name = "my-jupyter-shared-drive"
-version = "0.1.14"
+version = "0.1.15"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
