@@ -208,10 +208,12 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
 
     this._app.serviceManager.contents.get(options.path, { content: true }).then(model => {
       let content = model.content;
-      if (model.format === 'base64') {
-          content = atob(content);
-      } else if (model.format === 'json') {
-          content = JSON.stringify(content);
+      if (model.type !== 'notebook') {
+        if (model.format === 'base64') {
+            content = atob(content);
+        } else if (model.format === 'json') {
+            content = JSON.stringify(content);
+        }
       }
       provider.setSource(content);
     });
