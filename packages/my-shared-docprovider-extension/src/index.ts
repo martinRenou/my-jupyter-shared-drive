@@ -7,16 +7,15 @@
 
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
-import { drive, yfile, ynotebook, mySharedFileBrowser } from './filebrowser';
+import { rtcContentProvider, yfile, ynotebook } from './filebrowser';
 
 /**
  * Export the plugins as default.
  */
 const plugins: JupyterFrontEndPlugin<any>[] = [
-  drive,
+  rtcContentProvider,
   yfile,
-  ynotebook,
-  mySharedFileBrowser
+  ynotebook
 ];
 
 export default plugins;

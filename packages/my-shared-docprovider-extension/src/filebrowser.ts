@@ -3,55 +3,65 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { CommandRegistry } from '@lumino/commands';
 import {
-  ILabShell,
-  IRouter,
+  IEditorWidgetFactory,
+  FileEditorFactory
+} from '@jupyterlab/fileeditor';
+import {
+  INotebookWidgetFactory,
+  NotebookWidgetFactory
+} from '@jupyterlab/notebook';
+import { ContentsManager } from '@jupyterlab/services';
+import { RtcContentProvider } from '@jupyter/my-shared-docprovider';
+import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import {
-  FileBrowser,
-  IDefaultFileBrowser,
-  IFileBrowserFactory
-} from '@jupyterlab/filebrowser';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
 import { YFile, YNotebook } from '@jupyter/ydoc';
 
-import { ICollaborativeDrive } from '@jupyter/collaborative-drive';
-import { MySharedDrive } from '@jupyter/my-shared-docprovider';
-
-/**
- * The command IDs used by the file browser plugin.
- */
-namespace CommandIDs {
-  export const openPath = 'filebrowser:open-path';
-}
+import { ICollaborativeContentProvider } from '@jupyter/collaborative-drive';
 
 /**
  * The shared drive provider.
  */
-export const drive: JupyterFrontEndPlugin<ICollaborativeDrive> = {
-  id: '@jupyter/docprovider-extension:drive',
-  description: 'The default collaborative drive provider',
-  provides: ICollaborativeDrive,
-  optional: [ITranslator],
-  activate: (
-    app: JupyterFrontEnd,
-    translator: ITranslator | null
-  ): ICollaborativeDrive => {
-    translator = translator ?? nullTranslator;
-    const trans = translator.load('my-jupyter-shared-drive');
-    const drive = new MySharedDrive(
-      app,
-      trans
-    );
-    app.serviceManager.contents.addDrive(drive);
-    return drive;
-  }
-};
+export const rtcContentProvider: JupyterFrontEndPlugin<ICollaborativeContentProvider> =
+  {
+    id: '@jupyter/docprovider-extension:content-provider',
+    description: 'The RTC content provider',
+    provides: ICollaborativeContentProvider,
+    optional: [ITranslator],
+    activate: (
+      app: JupyterFrontEnd,
+      translator: ITranslator | null
+    ): ICollaborativeContentProvider => {
+      translator = translator ?? nullTranslator;
+      const trans = translator.load('my-jupyter-shared-drive');
+      const defaultDrive = (app.serviceManager.contents as ContentsManager)
+        .defaultDrive;
+      if (!defaultDrive) {
+        throw Error(
+          'Cannot initialize content provider: default drive property not accessible on contents manager instance.'
+        );
+      }
+      const registry = defaultDrive.contentProviderRegistry;
+      if (!registry) {
+        throw Error(
+          'Cannot initialize content provider: no content provider registry.'
+        );
+      }
+      const rtcContentProvider = new RtcContentProvider(app, {
+        apiEndpoint: '/api/contents',
+        serverSettings: defaultDrive.serverSettings,
+        user: app.serviceManager.user,
+        trans
+      });
+      registry.register('rtc', rtcContentProvider);
+      return rtcContentProvider;
+    }
+  };
 
 /**
  * Plugin to register the shared model factory for the content type 'file'.
@@ -61,13 +71,21 @@ export const yfile: JupyterFrontEndPlugin<void> = {
   description:
     "Plugin to register the shared model factory for the content type 'file'",
   autoStart: true,
-  requires: [ICollaborativeDrive],
+  requires: [ICollaborativeContentProvider, IEditorWidgetFactory],
   optional: [],
-  activate: (app: JupyterFrontEnd, drive: ICollaborativeDrive): void => {
+  activate: (
+    app: JupyterFrontEnd,
+    contentProvider: ICollaborativeContentProvider,
+    editorFactory: FileEditorFactory.IFactory
+  ): void => {
     const yFileFactory = () => {
       return new YFile();
     };
-    drive.sharedModelFactory.registerDocumentFactory('file', yFileFactory);
+    contentProvider.sharedModelFactory.registerDocumentFactory(
+      'file',
+      yFileFactory
+    );
+    editorFactory.contentProviderId = 'rtc';
   }
 };
 
@@ -79,11 +97,12 @@ export const ynotebook: JupyterFrontEndPlugin<void> = {
   description:
     "Plugin to register the shared model factory for the content type 'notebook'",
   autoStart: true,
-  requires: [ICollaborativeDrive],
+  requires: [ICollaborativeContentProvider, INotebookWidgetFactory],
   optional: [ISettingRegistry],
   activate: (
     app: JupyterFrontEnd,
-    drive: ICollaborativeDrive,
+    contentProvider: ICollaborativeContentProvider,
+    notebookFactory: NotebookWidgetFactory.IFactory,
     settingRegistry: ISettingRegistry | null
   ): void => {
     let disableDocumentWideUndoRedo = true;
@@ -113,112 +132,10 @@ export const ynotebook: JupyterFrontEndPlugin<void> = {
         disableDocumentWideUndoRedo
       });
     };
-    drive.sharedModelFactory.registerDocumentFactory(
+    contentProvider.sharedModelFactory.registerDocumentFactory(
       'notebook',
       yNotebookFactory
     );
+    notebookFactory.contentProviderId = 'rtc';
   }
 };
-
-/**
- * The shared file browser factory provider.
- */
-export const mySharedFileBrowser: JupyterFrontEndPlugin<IDefaultFileBrowser> = {
-  id: 'my-jupyter-shared-drive:mySharedFileBrowser',
-  description: 'The shared file browser factory provider',
-  autoStart: true,
-  provides: IDefaultFileBrowser,
-  requires: [ICollaborativeDrive, IFileBrowserFactory],
-  optional: [IRouter, JupyterFrontEnd.ITreeResolver, ILabShell, ITranslator],
-  activate: async (
-    app: JupyterFrontEnd,
-    drive: ICollaborativeDrive,
-    fileBrowserFactory: IFileBrowserFactory,
-    router: IRouter | null,
-    tree: JupyterFrontEnd.ITreeResolver | null,
-    labShell: ILabShell | null,
-    translator: ITranslator | null
-  ): Promise<IDefaultFileBrowser> => {
-    const { commands } = app;
-    const trans = (translator ?? nullTranslator).load('jupyterlab');
-    app.serviceManager.contents.addDrive(drive);
-
-    // Manually restore and load the default file browser.
-    const defaultBrowser = fileBrowserFactory.createFileBrowser('filebrowser', {
-      auto: false,
-      restore: false,
-      driveName: drive.name
-    });
-    defaultBrowser.node.setAttribute('role', 'region');
-    defaultBrowser.node.setAttribute(
-      'aria-label',
-      trans.__('File Browser Section')
-    );
-
-    void Private.restoreBrowser(
-      defaultBrowser,
-      commands,
-      router,
-      tree,
-      labShell
-    );
-
-    return defaultBrowser;
-  }
-};
-
-namespace Private {
-  /**
-   * Restores file browser state and overrides state if tree resolver resolves.
-   */
-  export async function restoreBrowser(
-    browser: FileBrowser,
-    commands: CommandRegistry,
-    router: IRouter | null,
-    tree: JupyterFrontEnd.ITreeResolver | null,
-    labShell: ILabShell | null
-  ): Promise<void> {
-    const restoring = 'jp-mod-restoring';
-
-    browser.addClass(restoring);
-
-    if (!router) {
-      await browser.model.restore(browser.id);
-      await browser.model.refresh();
-      browser.removeClass(restoring);
-      return;
-    }
-
-    const listener = async () => {
-      router.routed.disconnect(listener);
-
-      const paths = await tree?.paths;
-
-      if (paths?.file || paths?.browser) {
-        // Restore the model without populating it.
-        await browser.model.restore(browser.id, false);
-        if (paths.file) {
-          await commands.execute(CommandIDs.openPath, {
-            path: paths.file,
-            dontShowBrowser: true
-          });
-        }
-        if (paths.browser) {
-          await commands.execute(CommandIDs.openPath, {
-            path: paths.browser,
-            dontShowBrowser: true
-          });
-        }
-      } else {
-        await browser.model.restore(browser.id);
-        await browser.model.refresh();
-      }
-      browser.removeClass(restoring);
-
-      if (labShell?.isEmpty('main')) {
-        void commands.execute('launcher:create');
-      }
-    };
-    router.routed.connect(listener);
-  }
-}

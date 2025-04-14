@@ -4,66 +4,55 @@
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { ISignal, Signal } from '@lumino/signaling';
 import { TranslationBundle } from '@jupyterlab/translation';
-import { Contents, Drive, User } from '@jupyterlab/services';
-
 import {
-  DocumentChange,
-  ISharedDocument,
-  YDocument,
-} from '@jupyter/ydoc';
+  Contents,
+  IContentProvider,
+  RestContentProvider,
+  SharedDocumentFactory,
+  User
+} from '@jupyterlab/services';
+
+import { DocumentChange, ISharedDocument, YDocument } from '@jupyter/ydoc';
 
 import { MyProvider } from './yprovider';
 import {
-  ICollaborativeDrive,
-  ISharedModelFactory,
-  SharedDocumentFactory
+  IDocumentProvider,
+  ISharedModelFactory
 } from '@jupyter/collaborative-drive';
 
-/**
- * A collaborative implementation for an `IDrive`.
- */
-export class MySharedDrive extends Drive implements ICollaborativeDrive {
+namespace RtcContentProvider {
+  export interface IOptions extends RestContentProvider.IOptions {
+    user: User.IManager;
+    trans: TranslationBundle;
+  }
+}
+
+export class RtcContentProvider
+  extends RestContentProvider
+  implements IContentProvider
+{
   /**
    * Construct a new drive object.
    *
    * @param user - The user manager to add the identity to the awareness of documents.
    */
-  constructor(
-    app: JupyterFrontEnd,
-    translator: TranslationBundle,
-  ) {
-    super({ name: 'RTC' });
+  constructor(app: JupyterFrontEnd, options: RtcContentProvider.IOptions) {
+    super(options);
     this._app = app;
-    this._user = app.serviceManager.user;
-    this._trans = translator;
+    this._user = options.user;
+    this._trans = options.trans;
     this._providers = new Map<string, MyProvider>();
     this.sharedModelFactory = new SharedModelFactory(this._onCreate);
-    super.fileChanged.connect((_, change) => {
-      // pass through any events from the Drive superclass
-      this._ydriveFileChanged.emit(change);
-    });
     this._saveLock = new AsyncLock();
   }
 
   /**
-   * SharedModel factory for the YDrive.
+   * SharedModel factory for the content provider.
    */
   readonly sharedModelFactory: ISharedModelFactory;
 
-  get providers(): Map<string, MyProvider> {
+  get providers(): Map<string, IDocumentProvider> {
     return this._providers;
-  }
-
-  /**
-   * Dispose of the resources held by the manager.
-   */
-  dispose(): void {
-    if (this.isDisposed) {
-      return;
-    }
-    this._providers.forEach(p => p.dispose());
-    this._providers.clear();
-    super.dispose();
   }
 
   /**
@@ -91,7 +80,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
         // Use `Promise.all` to reject as soon as possible. The Context will
         // show a dialog to the user.
         const [model] = await Promise.all([
-          await this._app.serviceManager.contents.get(localPath, { ...options, content: false }),
+          super.get(localPath, { ...options, content: false }),
           provider.ready
         ]);
         // The server doesn't return a model with a format when content is false,
@@ -100,7 +89,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
       }
     }
 
-    return await this._app.serviceManager.contents.get(localPath, options);
+    return await super.get(localPath, options);
   }
 
   async listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
@@ -108,21 +97,26 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
   }
 
   async createCheckpoint(path: string): Promise<Contents.ICheckpointModel> {
-    return {id: '', last_modified: ''};
+    return { id: '', last_modified: '' };
   }
 
   async rename(
     oldLocalPath: string,
     newLocalPath: string
   ): Promise<Contents.IModel> {
-    return await this._app.serviceManager.contents.rename(oldLocalPath, newLocalPath);
+    return await this._app.serviceManager.contents.rename(
+      oldLocalPath,
+      newLocalPath
+    );
   }
 
   async delete(localPath: string): Promise<void> {
     return await this._app.serviceManager.contents.delete(localPath);
   }
 
-  async newUntitled(options?: Contents.ICreateOptions): Promise<Contents.IModel> {
+  async newUntitled(
+    options?: Contents.ICreateOptions
+  ): Promise<Contents.IModel> {
     return await this._app.serviceManager.contents.newUntitled(options);
   }
 
@@ -156,7 +150,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
       }
     }
 
-    return this._app.serviceManager.contents.save(localPath, options);
+    return await super.save(localPath, options);
   }
 
   /**
@@ -167,7 +161,7 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
   }
 
   private _onCreate = (
-    options: Contents.ISharedFactoryOptions,
+    options: Contents.ISharedFactoryOptions
   ): YDocument<DocumentChange> => {
     if (typeof options.format !== 'string') {
       const factory = (
@@ -206,37 +200,46 @@ export class MySharedDrive extends Drive implements ICollaborativeDrive {
 
     this._providers.set(key, provider);
 
-    this._app.serviceManager.contents.get(options.path, { type: options.contentType, format: options.format, content: true }).then(model => {
-      let content = model.content;
-      if (model.format === 'base64') {
+    this._app.serviceManager.contents
+      .get(options.path, {
+        type: options.contentType,
+        format: options.format,
+        content: true
+      })
+      .then(model => {
+        let content = model.content;
+        if (model.format === 'base64') {
           content = atob(content);
-      }
-      else if (options.format === 'text' && model.format === 'json') {
+        } else if (options.format === 'text' && model.format === 'json') {
           content = JSON.stringify(content);
-      }
-      else if (options.format === 'json' && model.format === 'text') {
+        } else if (options.format === 'json' && model.format === 'text') {
           content = JSON.parse(content);
-      }
-      provider.setSource(content);
-    });
+        }
+        provider.setSource(content);
+      });
 
-    sharedModel.ydoc.on('update' , (update, origin) => {
+    sharedModel.ydoc.on('update', (update, origin) => {
       if (origin === this) {
         return;
       }
       this._saveLock.promise.then(() => {
         this._saveLock.enable();
         let content = sharedModel.getSource();
-        sharedModel.ydoc.transact( () => {
+        sharedModel.ydoc.transact(() => {
           sharedModel.ystate.set('dirty', false);
         }, this);
         if (options.format === 'text' && typeof content === 'object') {
           content = JSON.stringify(content);
         }
-        this._app.serviceManager.contents.save(options.path, {content, format: options.format, type: options.contentType})
-        .then(() => {
-          this._saveLock.disable();
-        });
+        this._app.serviceManager.contents
+          .save(options.path, {
+            content,
+            format: options.format,
+            type: options.contentType
+          })
+          .then(() => {
+            this._saveLock.disable();
+          });
       });
     });
 
@@ -272,7 +275,7 @@ class SharedModelFactory implements ISharedModelFactory {
    */
   constructor(
     private _onCreate: (
-      options: Contents.ISharedFactoryOptions,
+      options: Contents.ISharedFactoryOptions
     ) => YDocument<DocumentChange>
   ) {
     this.documentFactories = new Map();
@@ -327,15 +330,14 @@ class SharedModelFactory implements ISharedModelFactory {
   }
 }
 
-
 class AsyncLock {
-  constructor () {
+  constructor() {
     this.disable = () => {};
     this.promise = Promise.resolve();
   }
 
-  enable () {
-    this.promise = new Promise(resolve => this.disable = resolve);
+  enable() {
+    this.promise = new Promise(resolve => (this.disable = resolve));
   }
 
   disable: any;
