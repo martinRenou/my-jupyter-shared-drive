@@ -1,6 +1,6 @@
 {
   "name": "@jupyter/my-shared-docprovider",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "JupyterLab - Shared Document Provider",
   "homepage": "https://github.com/davidbrochart/my-jupyter-shared-drive",
   "bugs": {

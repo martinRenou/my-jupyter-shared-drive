@@ -1,6 +1,6 @@
 {
   "name": "@jupyter/my-shared-docprovider-extension",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "JupyterLab - Collaborative Shared Models",
   "keywords": [
     "jupyter",
@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@jupyter/collaborative-drive": "^4.0.0",
-    "@jupyter/my-shared-docprovider": "^0.1.0",
+    "@jupyter/my-shared-docprovider": "^0.2.1",
     "@jupyterlab/filebrowser": "^4.4.0",
     "@jupyterlab/fileeditor": "^4.4.0",
     "@jupyterlab/notebook": "^4.4.0"

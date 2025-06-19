@@ -2040,7 +2040,7 @@ __metadata:
   resolution: "@jupyter/my-shared-docprovider-extension@workspace:packages/my-shared-docprovider-extension"
   dependencies:
     "@jupyter/collaborative-drive": ^4.0.0
-    "@jupyter/my-shared-docprovider": ^0.1.0
+    "@jupyter/my-shared-docprovider": ^0.2.1
     "@jupyterlab/builder": ^4.4.0
     "@jupyterlab/filebrowser": ^4.4.0
     "@jupyterlab/fileeditor": ^4.4.0
@@ -2051,7 +2051,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@jupyter/my-shared-docprovider@^0.1.0, @jupyter/my-shared-docprovider@workspace:packages/my-shared-docprovider":
+"@jupyter/my-shared-docprovider@^0.2.1, @jupyter/my-shared-docprovider@workspace:packages/my-shared-docprovider":
   version: 0.0.0-use.local
   resolution: "@jupyter/my-shared-docprovider@workspace:packages/my-shared-docprovider"
   dependencies:
