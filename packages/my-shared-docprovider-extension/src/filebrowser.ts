@@ -53,8 +53,7 @@ export const rtcContentProvider: JupyterFrontEndPlugin<ICollaborativeContentProv
         );
       }
       const rtcContentProvider = new RtcContentProvider(app, {
-        apiEndpoint: '/api/contents',
-        serverSettings: defaultDrive.serverSettings,
+        currentDrive: defaultDrive,
         user: app.serviceManager.user,
         trans
       });

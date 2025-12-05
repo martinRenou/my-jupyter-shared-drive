@@ -7,7 +7,6 @@ import { TranslationBundle } from '@jupyterlab/translation';
 import {
   Contents,
   IContentProvider,
-  RestContentProvider,
   SharedDocumentFactory,
   User
 } from '@jupyterlab/services';
@@ -21,26 +20,24 @@ import {
 } from '@jupyter/collaborative-drive';
 
 namespace RtcContentProvider {
-  export interface IOptions extends RestContentProvider.IOptions {
+  export interface IOptions {
+    currentDrive: Contents.IDrive;
     user: User.IManager;
     trans: TranslationBundle;
   }
 }
 
-export class RtcContentProvider
-  extends RestContentProvider
-  implements IContentProvider
-{
+export class RtcContentProvider implements IContentProvider {
   /**
    * Construct a new drive object.
    *
    * @param user - The user manager to add the identity to the awareness of documents.
    */
   constructor(app: JupyterFrontEnd, options: RtcContentProvider.IOptions) {
-    super(options);
     this._app = app;
     this._user = options.user;
     this._trans = options.trans;
+    this._currentDrive = options.currentDrive;
     this._providers = new Map<string, MyProvider>();
     this.sharedModelFactory = new SharedModelFactory(this._onCreate);
     this._saveLock = new AsyncLock();
@@ -80,7 +77,11 @@ export class RtcContentProvider
         // Use `Promise.all` to reject as soon as possible. The Context will
         // show a dialog to the user.
         const [model] = await Promise.all([
-          super.get(localPath, { ...options, content: false }),
+          this._currentDrive.get(localPath, {
+            ...options,
+            content: false,
+            contentProviderId: undefined
+          }),
           provider.ready
         ]);
         // The server doesn't return a model with a format when content is false,
@@ -89,7 +90,10 @@ export class RtcContentProvider
       }
     }
 
-    return await super.get(localPath, options);
+    return await this._currentDrive.get(localPath, {
+      ...options,
+      contentProviderId: undefined
+    });
   }
 
   async listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
@@ -132,7 +136,7 @@ export class RtcContentProvider
    */
   async save(
     localPath: string,
-    options: Partial<Contents.IModel> = {}
+    options: Partial<Contents.IModel> & Contents.IContentProvisionOptions = {}
   ): Promise<Contents.IModel> {
     // Check that there is a provider - it won't e.g. if the document model is not collaborative.
     if (options.format && options.type) {
@@ -150,7 +154,10 @@ export class RtcContentProvider
       }
     }
 
-    return await super.save(localPath, options);
+    return await this._currentDrive.save(localPath, {
+      ...options,
+      contentProviderId: undefined
+    });
   }
 
   /**
@@ -254,6 +261,7 @@ export class RtcContentProvider
     return sharedModel;
   };
 
+  private _currentDrive: Contents.IDrive;
   private _app: JupyterFrontEnd;
   private _user: User.IManager;
   private _trans: TranslationBundle;
