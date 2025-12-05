@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  lint:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ['3.14']
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install Conda environment with Micromamba
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-name: ci
+        channels: conda-forge
+        create-args: >-
+          python=${{ matrix.python-version }}
+          jupyterlab
+          build
+
+    - name: Test TS build
+      run: |
+        jlpm
+        jlpm run build
+
+    - name: Test Python build
+      run: python -m build
