@@ -1,8 +1,6 @@
 {
   "entryPointStrategy": "packages",
-  "entryPoints": [
-    "packages/my-shared-docprovider"
-  ],
+  "entryPoints": ["packages/my-shared-docprovider"],
   "externalSymbolLinkMappings": {
     "@codemirror/state": {
       "Extension": "https://codemirror.net/docs/ref/#state.Extension"
