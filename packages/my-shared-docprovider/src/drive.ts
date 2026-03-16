@@ -40,7 +40,6 @@ export class RtcContentProvider implements IContentProvider {
     this._currentDrive = options.currentDrive;
     this._providers = new Map<string, MyProvider>();
     this.sharedModelFactory = new SharedModelFactory(this._onCreate);
-    this._saveLock = new AsyncLock();
   }
 
   /**
@@ -138,22 +137,7 @@ export class RtcContentProvider implements IContentProvider {
     localPath: string,
     options: Partial<Contents.IModel> & Contents.IContentProvisionOptions = {}
   ): Promise<Contents.IModel> {
-    // Check that there is a provider - it won't e.g. if the document model is not collaborative.
-    if (options.format && options.type) {
-      const key = `${options.format}:${options.type}:${localPath}`;
-      const provider = this._providers.get(key);
-
-      if (provider) {
-        // Save is done from the backend
-        const fetchOptions: Contents.IFetchOptions = {
-          type: options.type,
-          format: options.format,
-          content: false
-        };
-        return this.get(localPath, fetchOptions);
-      }
-    }
-
+    // my-jupyter-shared-drive relies on the official save logic
     return await this._currentDrive.save(localPath, {
       ...options,
       contentProviderId: undefined
@@ -225,31 +209,6 @@ export class RtcContentProvider implements IContentProvider {
         provider.setSource(content);
       });
 
-    sharedModel.ydoc.on('update', (update, origin) => {
-      if (origin === this) {
-        return;
-      }
-      this._saveLock.promise.then(() => {
-        this._saveLock.enable();
-        let content = sharedModel.getSource();
-        sharedModel.ydoc.transact(() => {
-          sharedModel.ystate.set('dirty', false);
-        }, this);
-        if (options.format === 'text' && typeof content === 'object') {
-          content = JSON.stringify(content);
-        }
-        this._app.serviceManager.contents
-          .save(options.path, {
-            content,
-            format: options.format,
-            type: options.contentType
-          })
-          .then(() => {
-            this._saveLock.disable();
-          });
-      });
-    });
-
     sharedModel.disposed.connect(() => {
       const provider = this._providers.get(key);
       if (provider) {
@@ -267,7 +226,6 @@ export class RtcContentProvider implements IContentProvider {
   private _trans: TranslationBundle;
   private _providers: Map<string, MyProvider>;
   private _ydriveFileChanged = new Signal<this, Contents.IChangedArgs>(this);
-  private _saveLock: AsyncLock;
 }
 
 /**
@@ -336,18 +294,4 @@ class SharedModelFactory implements ISharedModelFactory {
 
     return;
   }
-}
-
-class AsyncLock {
-  constructor() {
-    this.disable = () => {};
-    this.promise = Promise.resolve();
-  }
-
-  enable() {
-    this.promise = new Promise(resolve => (this.disable = resolve));
-  }
-
-  disable: any;
-  promise: Promise<void>;
 }
